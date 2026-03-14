@@ -4,7 +4,6 @@ import {
   DescribeExecutionCommand,
   GetExecutionHistoryCommand,
 } from '@aws-sdk/client-sfn';
-import { checkAuth } from '../_lib/auth';
 
 const sfn = new SFNClient({ region: process.env.AWS_REGION });
 
@@ -16,7 +15,11 @@ const STEP_MAP: Record<string, string> = {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkAuth(req, res)) return;
+
+  const apiKey = process.env.API_KEY;
+  if (apiKey && req.headers['x-api-key'] !== apiKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const { jobId } = req.query;
   if (!jobId || typeof jobId !== 'string') return res.status(400).json({ error: 'Missing jobId' });
