@@ -123,7 +123,7 @@ const Index = () => {
           )}
 
           {error && (
-            <p className="text-sm text-red-400 text-center mt-4 px-4">{error}</p>
+            <p className="text-sm text-destructive-foreground text-center mt-4 px-4">{error}</p>
           )}
         </div>
       </div>

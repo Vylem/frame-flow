@@ -112,7 +112,7 @@ const StatusPage = () => {
 
         {data?.status === "failed" && (
           <div className="space-y-4">
-            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-red-400">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive-foreground">
               <AlertCircle className="shrink-0 w-5 h-5" />
               <p className="text-sm">Reframing failed. Please try a different video.</p>
             </div>
