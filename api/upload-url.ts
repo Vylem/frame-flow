@@ -9,13 +9,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const { contentType } = (req.body ?? {}) as { contentType?: string };
+    const isQuicktime = contentType === 'video/quicktime';
+    const mimeType = isQuicktime ? 'video/quicktime' : 'video/mp4';
+    const ext = isQuicktime ? 'mov' : 'mp4';
+
     const jobId = randomUUID();
-    const key = `${jobId}.mp4`;
+    const key = `${jobId}.${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.INPUT_BUCKET,
       Key: key,
-      ContentType: 'video/mp4',
+      ContentType: mimeType,
     });
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });

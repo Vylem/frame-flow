@@ -18,8 +18,8 @@ const Index = () => {
   const handleFile = useCallback((f: File | null) => {
     setError(null);
     if (!f) return;
-    if (f.type !== "video/mp4") {
-      setError("Only MP4 files are supported");
+    if (f.type !== "video/mp4" && f.type !== "video/quicktime") {
+      setError("Only MP4 and MOV files are supported");
       return;
     }
     if (f.size > MAX_SIZE) {
@@ -34,7 +34,7 @@ const Index = () => {
     setUploading(true);
     setError(null);
     try {
-      const { uploadUrl, jobId } = await getUploadUrl();
+      const { uploadUrl, jobId } = await getUploadUrl(file);
       await uploadToS3(uploadUrl, file, setProgress);
       navigate(`/status/${jobId}`);
     } catch {
@@ -77,12 +77,12 @@ const Index = () => {
             >
               <Upload className="w-10 h-10 mb-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
               <p className="text-sm font-medium">Click or drag video to upload</p>
-              <p className="text-xs text-muted-foreground mt-2">Max 2GB · MP4 only</p>
+              <p className="text-xs text-muted-foreground mt-2">Max 2GB · MP4 or MOV</p>
               <input
                 ref={inputRef}
                 type="file"
                 className="hidden"
-                accept="video/mp4"
+                accept="video/mp4,video/quicktime"
                 onChange={(e) => handleFile(e.target.files?.[0] || null)}
               />
             </label>
