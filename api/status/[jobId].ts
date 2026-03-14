@@ -8,10 +8,10 @@ import {
 const sfn = new SFNClient({ region: process.env.AWS_REGION });
 
 const STEP_MAP: Record<string, string> = {
-    AnalyzeVideo: 'Analyzing',
-    PlanCropPath: 'Planning',                                                          
-    RenderVideo:  'Rendering',
-  };                          
+  AnalyzeVideo: 'Analyzing',
+  PlanCropPath: 'Planning',
+  RenderVideo:  'Rendering',
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
