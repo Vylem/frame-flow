@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, Circle, Loader2, Download, AlertCircle, ArrowLeft } from "lucide-react";
 import { getJobStatus, getDownloadUrl } from "@/lib/api";
@@ -17,21 +17,35 @@ const StatusPage = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<{ status: string; currentStep: string; startedAt?: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [pollError, setPollError] = useState<string | null>(null);
+  const failStreak = useRef(0);
 
   useEffect(() => {
     if (!jobId) return;
-    const poll = setInterval(async () => {
-      try {
-        const json = await getJobStatus(jobId);
-        setData(json);
-        if (json.status === "succeeded" || json.status === "failed") clearInterval(poll);
-      } catch {
-        // silently retry
-      }
-    }, 5000);
 
-    // immediate first call
-    getJobStatus(jobId).then(setData).catch(() => {});
+    async function fetchStatus() {
+      try {
+        const json = await getJobStatus(jobId!);
+        failStreak.current = 0;
+        setPollError(null);
+        setData(json);
+        return json.status === "succeeded" || json.status === "failed";
+      } catch (err: any) {
+        failStreak.current += 1;
+        if (failStreak.current >= 2) {
+          // Surface the error so the user can see something is wrong
+          setPollError(err?.message ?? "Could not reach the status API");
+        }
+        return false;
+      }
+    }
+
+    fetchStatus(); // immediate first call
+
+    const poll = setInterval(async () => {
+      const done = await fetchStatus();
+      if (done) clearInterval(poll);
+    }, 5000);
 
     return () => clearInterval(poll);
   }, [jobId]);
@@ -67,6 +81,13 @@ const StatusPage = () => {
           <h1 className="text-2xl font-semibold tracking-tight">Reframing</h1>
           <p className="text-sm text-muted-foreground">Your video is being processed</p>
         </header>
+
+        {pollError && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive-foreground text-xs">
+            <AlertCircle className="shrink-0 w-4 h-4" />
+            <span>{pollError} — check Vercel env vars (API_KEY / VITE_API_KEY)</span>
+          </div>
+        )}
 
         <div className="space-y-0">
           {STEPS.map((step, i) => {
