@@ -100,14 +100,22 @@ const StatusPage = () => {
         </div>
 
         {data?.status === "succeeded" && (
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="w-full py-4 bg-foreground text-background rounded-xl font-semibold hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 hover:-translate-y-px glow-button"
-          >
-            <Download className="w-5 h-5" />
-            {downloading ? "Preparing…" : "Download Result"}
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="w-full py-4 bg-foreground text-background rounded-xl font-semibold hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 hover:-translate-y-px glow-button"
+            >
+              <Download className="w-5 h-5" />
+              {downloading ? "Preparing…" : "Download Result"}
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full py-3 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" /> Reframe another video
+            </button>
+          </div>
         )}
 
         {data?.status === "failed" && (
