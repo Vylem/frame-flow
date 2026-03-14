@@ -4,9 +4,10 @@ import { CheckCircle2, Circle, Loader2, Download, AlertCircle, ArrowLeft } from 
 import { getJobStatus, getDownloadUrl } from "@/lib/api";
 
 const STEPS = [
-  { name: "Analyzing", desc: "Detecting subjects and motion…" },
-  { name: "Planning", desc: "Computing the optimal crop path…" },
-  { name: "Rendering", desc: "Encoding 9:16 portrait output…" },
+  { name: "Normalizing", desc: "Converting video for analysis…" },
+  { name: "Analyzing",   desc: "Detecting subjects and motion…" },
+  { name: "Planning",    desc: "Computing the optimal crop path…" },
+  { name: "Rendering",   desc: "Encoding 9:16 portrait output…" },
 ];
 
 type StepStatus = "complete" | "active" | "pending";
