@@ -1,9 +1,14 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '';
+const API_KEY  = import.meta.env.VITE_API_KEY  || '';
+
+function authHeaders(): Record<string, string> {
+  return API_KEY ? { 'x-api-key': API_KEY } : {};
+}
 
 export async function getUploadUrl(file: File, quality: string): Promise<{ uploadUrl: string; jobId: string; key: string }> {
   const res = await fetch(`${API_BASE}/api/upload-url`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ contentType: file.type, quality }),
   });
   if (!res.ok) throw new Error('Failed to get upload URL');
@@ -15,13 +20,17 @@ export async function getJobStatus(jobId: string): Promise<{
   currentStep: string;
   startedAt?: string;
 }> {
-  const res = await fetch(`${API_BASE}/api/status/${jobId}`);
+  const res = await fetch(`${API_BASE}/api/status/${jobId}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to get status');
   return res.json();
 }
 
 export async function getDownloadUrl(jobId: string): Promise<{ downloadUrl: string }> {
-  const res = await fetch(`${API_BASE}/api/download/${jobId}`);
+  const res = await fetch(`${API_BASE}/api/download/${jobId}`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to get download URL');
   return res.json();
 }

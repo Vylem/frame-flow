@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   SFNClient,
-  ListExecutionsCommand,
+  DescribeExecutionCommand,
   GetExecutionHistoryCommand,
 } from '@aws-sdk/client-sfn';
+import { checkAuth } from '../_lib/auth';
 
 const sfn = new SFNClient({ region: process.env.AWS_REGION });
 
@@ -15,21 +16,17 @@ const STEP_MAP: Record<string, string> = {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!checkAuth(req, res)) return;
 
   const { jobId } = req.query;
   if (!jobId || typeof jobId !== 'string') return res.status(400).json({ error: 'Missing jobId' });
 
+  // Derive execution ARN directly — avoids scanning ListExecutions
+  const executionArn = process.env.STATE_MACHINE_ARN!
+    .replace(':stateMachine:', ':execution:') + `:${jobId}`;
+
   try {
-    const executions = await sfn.send(
-      new ListExecutionsCommand({
-        stateMachineArn: process.env.STATE_MACHINE_ARN,
-        maxResults: 100,
-      })
-    );
-
-    const execution = executions.executions?.find((e) => e.name === jobId);
-    if (!execution) return res.status(404).json({ error: 'Job not found' });
-
+    const execution = await sfn.send(new DescribeExecutionCommand({ executionArn }));
     const sfnStatus = execution.status; // RUNNING | SUCCEEDED | FAILED | TIMED_OUT | ABORTED
 
     if (sfnStatus === 'SUCCEEDED') {
@@ -44,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const history = await sfn.send(
         new GetExecutionHistoryCommand({
-          executionArn: execution.executionArn,
+          executionArn,
           reverseOrder: true,
           maxResults: 50,
         })
@@ -60,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     } catch {
-      // Fall back to 'analyzing' if history fetch fails
+      // Fall back to 'Analyzing' if history fetch fails
     }
 
     return res.status(200).json({
@@ -68,7 +65,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentStep,
       startedAt: execution.startDate?.toISOString(),
     });
-  } catch (err) {
+  } catch (err: any) {
+    if (err.name === 'ExecutionDoesNotExist') {
+      return res.status(404).json({ error: 'Job not found' });
+    }
     console.error('status error:', err);
     return res.status(500).json({ error: 'Failed to get job status' });
   }

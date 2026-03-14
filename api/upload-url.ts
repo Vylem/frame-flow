@@ -2,11 +2,19 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import { checkAuth } from './_lib/auth';
+import { checkRateLimit } from './_lib/rateLimit';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!checkAuth(req, res)) return;
+
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? 'unknown';
+  if (!await checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests — try again later' });
+  }
 
   try {
     const { contentType, quality } = (req.body ?? {}) as { contentType?: string; quality?: string };
@@ -24,7 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ContentType: mimeType,
     });
 
-    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    // 5-minute expiry — short window limits upload-URL abuse
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
 
     return res.status(200).json({ uploadUrl, jobId, key });
   } catch (err) {
