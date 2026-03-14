@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Determine current step from execution history
-    let currentStep = 'analyzing';
+    let currentStep = 'Analyzing';
     try {
       const history = await sfn.send(
         new GetExecutionHistoryCommand({
