@@ -14,6 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const command = new GetObjectCommand({
       Bucket: process.env.OUTPUT_BUCKET,
       Key: `reframed/${jobId}.mp4`,
+      ResponseContentDisposition: `attachment; filename="reframed-${jobId}.mp4"`,
     });
 
     const downloadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
