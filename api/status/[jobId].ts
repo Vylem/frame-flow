@@ -8,9 +8,9 @@ import {
 const sfn = new SFNClient({ region: process.env.AWS_REGION });
 
 const STEP_MAP: Record<string, string> = {
-  Analyzing: 'analyzing',
-  Planning: 'planning',
-  Rendering: 'rendering',
+  Analyzing: 'Analyzing',
+  Planning: 'Planning',
+  Rendering: 'Rendering',
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Determine current step from execution history
-    let currentStep = 'analyzing';
+    let currentStep = 'Analyzing';
     try {
       const history = await sfn.send(
         new GetExecutionHistoryCommand({
