@@ -8,9 +8,9 @@ import {
 const sfn = new SFNClient({ region: process.env.AWS_REGION });
 
 const STEP_MAP: Record<string, string> = {
-  Analyzing: 'analyzing',
-  Planning: 'planning',
-  Rendering: 'rendering',
+  Analyzing: 'Analyzing',
+  Planning: 'Planning',
+  Rendering: 'Rendering',
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
