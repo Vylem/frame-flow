@@ -6,8 +6,17 @@ import { getUploadUrl, uploadToS3 } from "@/lib/api";
 
 const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
+type Quality = "low" | "medium" | "high";
+
+const QUALITY_OPTIONS: { value: Quality; label: string; desc: string }[] = [
+  { value: "low",    label: "Low",    desc: "Faster · smaller file" },
+  { value: "medium", label: "Medium", desc: "Balanced" },
+  { value: "high",   label: "High",   desc: "Best quality · larger file" },
+];
+
 const Index = () => {
   const [file, setFile] = useState<File | null>(null);
+  const [quality, setQuality] = useState<Quality>("medium");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +43,8 @@ const Index = () => {
     setUploading(true);
     setError(null);
     try {
-      const { uploadUrl, jobId } = await getUploadUrl(file);
-      await uploadToS3(uploadUrl, file, setProgress);
+      const { uploadUrl, jobId } = await getUploadUrl(file, quality);
+      await uploadToS3(uploadUrl, file, quality, setProgress);
       navigate(`/status/${jobId}`);
     } catch {
       setError("Upload failed. Please try again.");
@@ -101,6 +110,27 @@ const Index = () => {
                     <X className="w-4 h-4" />
                   </button>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Output quality</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {QUALITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      disabled={uploading}
+                      onClick={() => setQuality(opt.value)}
+                      className={`py-2 px-3 rounded-lg border text-left transition-all duration-150 ${
+                        quality === opt.value
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <p className="text-xs font-medium">{opt.label}</p>
+                      <p className="text-[10px] opacity-70 mt-0.5">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {uploading ? (

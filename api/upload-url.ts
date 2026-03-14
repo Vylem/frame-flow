@@ -9,10 +9,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { contentType } = (req.body ?? {}) as { contentType?: string };
+    const { contentType, quality } = (req.body ?? {}) as { contentType?: string; quality?: string };
     const isQuicktime = contentType === 'video/quicktime';
     const mimeType = isQuicktime ? 'video/quicktime' : 'video/mp4';
     const ext = isQuicktime ? 'mov' : 'mp4';
+    const resolvedQuality = ['low', 'medium', 'high'].includes(quality ?? '') ? quality! : 'medium';
 
     const jobId = randomUUID();
     const key = `${jobId}.${ext}`;
@@ -21,6 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       Bucket: process.env.INPUT_BUCKET,
       Key: key,
       ContentType: mimeType,
+      Metadata: { quality: resolvedQuality },
     });
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
