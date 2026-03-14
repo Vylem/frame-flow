@@ -16,13 +16,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resolvedQuality = ['low', 'medium', 'high'].includes(quality ?? '') ? quality! : 'medium';
 
     const jobId = randomUUID();
-    const key = `${jobId}.${ext}`;
+    const key = `${resolvedQuality}/${jobId}.${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.INPUT_BUCKET,
       Key: key,
       ContentType: mimeType,
-      Metadata: { quality: resolvedQuality },
     });
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
