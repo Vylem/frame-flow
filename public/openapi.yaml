@@ -1,0 +1,286 @@
+openapi: 3.0.3
+
+info:
+  title: Reframer API
+  description: |
+    Automatically reframe landscape (16:9) videos to portrait (9:16) using AI-powered subject detection.
+
+    ## How it works
+    1. **Request an upload URL** — `POST /upload` returns a presigned S3 URL and a `jobId`
+    2. **Upload your video** — `PUT` the file directly to the presigned URL (no auth needed, expires in 5 min)
+    3. **Poll for status** — `GET /jobs/{jobId}` until `status` is `succeeded` or `failed`
+    4. **Download the result** — `GET /jobs/{jobId}/download` returns a presigned download URL (1 hour expiry)
+
+    ## Authentication
+    All requests must include your API key in the `x-api-key` header.
+
+    ## Supported formats
+    - **MP4** (`video/mp4`) — H.264 or H.265/HEVC
+    - **MOV** (`video/quicktime`) — including iPhone footage (HEVC)
+
+    Files are automatically converted to H.264 MP4 before processing if needed.
+  version: 1.0.0
+  contact:
+    name: Reframer Support
+
+servers:
+  - url: https://f4jlsmes7f.execute-api.us-east-1.amazonaws.com/v1
+    description: Production
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Jobs
+    description: Video reframing jobs
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+
+  schemas:
+    UploadRequest:
+      type: object
+      required:
+        - contentType
+      properties:
+        contentType:
+          type: string
+          enum:
+            - video/mp4
+            - video/quicktime
+          description: MIME type of the video file you are uploading
+          example: video/mp4
+        quality:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+          default: medium
+          description: |
+            Output quality preset:
+            - `low` — faster processing, smaller file (CRF 28)
+            - `medium` — balanced (CRF 23, default)
+            - `high` — best quality, larger file (CRF 18, slower)
+
+    UploadResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+          description: Presigned S3 URL — `PUT` your video file to this URL. Expires in **5 minutes**. No auth headers required on this request.
+        jobId:
+          type: string
+          format: uuid
+          description: Unique job identifier — use this to poll status and download the result
+          example: d07e0adb-6515-4d99-bcc0-51d83789b174
+        key:
+          type: string
+          description: S3 object key of the uploaded file
+          example: medium/d07e0adb-6515-4d99-bcc0-51d83789b174.mp4
+
+    JobStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - Normalizing
+            - Analyzing
+            - Planning
+            - Rendering
+            - succeeded
+            - failed
+          description: |
+            Current pipeline stage:
+            - `Normalizing` — converting HEVC/MOV to H.264 MP4
+            - `Analyzing` — detecting faces, subjects, and shot boundaries
+            - `Planning` — computing the optimal 9:16 crop path
+            - `Rendering` — encoding the final portrait video
+            - `succeeded` — output is ready to download
+            - `failed` — processing failed
+          example: Rendering
+        currentStep:
+          type: string
+          description: Same as `status` (included for convenience)
+          example: Rendering
+        startedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the job started
+          example: "2026-03-15T11:26:11.820Z"
+
+    DownloadResponse:
+      type: object
+      properties:
+        downloadUrl:
+          type: string
+          format: uri
+          description: Presigned S3 URL to download the reframed MP4. Expires in **1 hour**. Opens as a file download (Content-Disposition attachment).
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Job not found
+
+paths:
+  /upload:
+    post:
+      tags:
+        - Jobs
+      summary: Request an upload URL
+      description: |
+        Returns a short-lived presigned S3 URL and a `jobId`.
+
+        After receiving the URL, upload your video file with:
+        ```
+        PUT {uploadUrl}
+        Content-Type: video/mp4   (or video/quicktime)
+
+        <raw file bytes>
+        ```
+        The reframing pipeline starts automatically within seconds of a successful upload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+            examples:
+              mp4_medium:
+                summary: MP4 at medium quality
+                value:
+                  contentType: video/mp4
+                  quality: medium
+              hevc_high:
+                summary: iPhone MOV at high quality
+                value:
+                  contentType: video/quicktime
+                  quality: high
+      responses:
+        '200':
+          description: Upload URL generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Invalid `contentType` or `quality`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jobs/{jobId}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job status
+      description: |
+        Poll this endpoint every 5–10 seconds until `status` is `succeeded` or `failed`.
+
+        Typical processing times are **2–5× the video duration** depending on quality setting and video codec.
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: The `jobId` returned by `POST /upload`
+          schema:
+            type: string
+            format: uuid
+          example: d07e0adb-6515-4d99-bcc0-51d83789b174
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+              examples:
+                running:
+                  summary: Job in progress
+                  value:
+                    status: Rendering
+                    currentStep: Rendering
+                    startedAt: "2026-03-15T11:26:11.820Z"
+                succeeded:
+                  summary: Job completed
+                  value:
+                    status: succeeded
+                    currentStep: done
+                    startedAt: "2026-03-15T11:26:11.820Z"
+                failed:
+                  summary: Job failed
+                  value:
+                    status: failed
+                    currentStep: error
+                    startedAt: "2026-03-15T11:26:11.820Z"
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jobs/{jobId}/download:
+    get:
+      tags:
+        - Jobs
+      summary: Get download URL
+      description: |
+        Returns a presigned URL to download the reframed 9:16 MP4.
+
+        Only call this once the job `status` is `succeeded`. The URL expires in **1 hour**.
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: The `jobId` returned by `POST /upload`
+          schema:
+            type: string
+            format: uuid
+          example: d07e0adb-6515-4d99-bcc0-51d83789b174
+      responses:
+        '200':
+          description: Download URL generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadResponse'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Output not found — job may still be processing or may have failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
