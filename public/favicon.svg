@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- landscape frame -->
+  <rect x="2" y="7" width="28" height="18" rx="2.5" stroke="#a78bfa" stroke-width="2" fill="#1a1a2e"/>
+  <!-- portrait crop highlight -->
+  <rect x="11" y="7" width="10" height="18" rx="1.5" fill="#7c3aed" opacity="0.85"/>
+  <!-- corner markers on portrait crop -->
+  <rect x="11" y="7" width="3" height="2" rx="0.5" fill="#c4b5fd"/>
+  <rect x="18" y="7" width="3" height="2" rx="0.5" fill="#c4b5fd"/>
+  <rect x="11" y="23" width="3" height="2" rx="0.5" fill="#c4b5fd"/>
+  <rect x="18" y="23" width="3" height="2" rx="0.5" fill="#c4b5fd"/>
+</svg>
